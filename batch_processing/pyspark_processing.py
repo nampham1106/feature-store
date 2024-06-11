@@ -1,34 +1,37 @@
-import argparse
 import os
-import dotenv
-import pandas as pd
-from glob import glob
-import pyspark
-from pyspark.sql import Row, SparkSession
-from pyspark.ml.feature import VectorAssembler, MinMaxScaler
-import pyspark.sql
-from pyspark.sql.functions import col, udf
-from pyspark.sql.types import DoubleType
+from minio import Minio
+from pyspark import SparkContext
+from pyspark.sql import SparkSession
 
-dotenv.load_dotenv()
-print("Starting PySpark job...")
-minio_bucket = os.getenv("MINIO_BUCKET")
+from minio import Minio
 
-conf = pyspark.SparkConf().setMaster("local[*]").setAppName("PySparkApp")
-conf.set("spark.jars.packages", 'org.apache.hadoop:hadoop-aws:3.3.1,io.delta:delta-core_2.12:2.1.0')
-conf.set('spark.hadoop.fs.s3a.endpoint', os.getenv('MINIO_ENDPOINT'))
-conf.set('spark.hadoop.fs.s3a.access.key', os.getenv('MINIO_ACCESS'))
-conf.set('spark.hadoop.fs.s3a.secret.key', os.getenv('MINIO_SECRET'))
-conf.set('spark.hadoop.fs.s3a.path.style.access', "true")
-conf.set("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-conf.set("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+# spark = (
+#         SparkSession.builder.appName("{database}_ddl")
+#         .config("spark.executor.cores", "1")
+#         .config("spark.executor.instances", "1")
+#         .enableHiveSupport()
+#         .getOrCreate()
+#     )
 
-sc = pyspark.SparkContext(conf=conf)
-spark = pyspark.sql.SparkSession(sc)
+client = Minio(
+    "localhost:9000",
+    access_key="minio",
+    secret_key="minio123",
+    secure=True
+)
 
-df = spark.read.option("header", "true").csv("./batch_processing/test.csv")
+minio_bucket = "mybucket"
 
-df.show()
+found = client.bucket_exists(minio_bucket)
+if not found:
+    client.make_bucket(minio_bucket)
+
+objects = client.list_objects('diabetes', prefix='diabetes/')
+for obj in objects:
+    print(obj.object_name)
+    # dataframe = spark.read.option("header", "true").csv(f"s3a://diabetes/{obj.object_name}.csv")
+    # dataframe.show()
 
 
-# df.write.csv(f"s3a://{minio_bucket}/test.csv", mode="overwrite")
+
+

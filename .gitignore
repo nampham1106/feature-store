@@ -1,0 +1,5 @@
+.venv
+infa/airflow/run_env/*
+infa/feast/datalake/*
+infa/feast/run_env/*
+dependencies/
